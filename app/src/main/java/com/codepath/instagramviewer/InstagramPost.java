@@ -1,23 +1,5 @@
 package com.codepath.instagramviewer;
 
-import android.content.Context;
-import android.graphics.Movie;
-import android.util.Log;
-import android.view.View;
-import android.widget.ListView;
-
-import com.loopj.android.http.*;
-import org.json.*;
-import org.apache.http.*;
-import com.loopj.android.http.JsonHttpResponseHandler;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Iterator;
-
 /**
  * Created by ccoria on 1/25/15.
  */

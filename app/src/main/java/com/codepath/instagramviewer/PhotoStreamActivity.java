@@ -1,22 +1,24 @@
 package com.codepath.instagramviewer;
 
 import android.content.Context;
-import android.graphics.Movie;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ListView;
-import org.apache.http.*;
+import android.widget.Toast;
 
 import com.loopj.android.http.JsonHttpResponseHandler;
+import org.apache.http.*;
+
 
 import org.apache.http.Header;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+
 
 
 public class PhotoStreamActivity extends ActionBarActivity {
@@ -28,51 +30,58 @@ public class PhotoStreamActivity extends ActionBarActivity {
         getSupportActionBar().hide();
 
         ListView lvMovies = (ListView) findViewById(R.id.lvPosts);
-        this.getPhotoStream(this, lvMovies);
+        this.populateStream(this, lvMovies);
     }
 
-    protected void getPhotoStream (final Context context, final ListView lvPosts) {
+    protected void populateStream (final Context context, final ListView lvPosts) {
         final ArrayList<InstagramPost> instagramPosts = new ArrayList<>();
 
-        InstagramAPIClient.get("/media/popular", null, new JsonHttpResponseHandler() {
+        JsonHttpResponseHandler responseHandler = new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                // If the response is JSONObject instead of expected JSONArray
-                try {
-                    JSONArray posts = (JSONArray) response.get("data");
+                if (statusCode < 400) {
+                    // If the response is JSONObject instead of expected JSONArray
+                    try {
+                        JSONArray posts = (JSONArray) response.get("data");
 
-                    for (int i=0;i<posts.length();i++){
-                        JSONObject jsonPost = (JSONObject) posts.get(i);
+                        for (int i = 0; i < posts.length(); i++) {
+                            JSONObject jsonPost = (JSONObject) posts.get(i);
 
-                        String imageUrl = jsonPost
-                                .getJSONObject("images")
-                                .getJSONObject("standard_resolution")
-                                .getString("url");
+                            String imageUrl = jsonPost
+                                    .getJSONObject("images")
+                                    .getJSONObject("standard_resolution")
+                                    .getString("url");
 
-                        String caption = "";
-                        if (jsonPost.has("caption") && !jsonPost.isNull("caption")) {
-                            caption = jsonPost.getJSONObject("caption").getString("text");
+                            String caption = "";
+                            if (jsonPost.has("caption") && !jsonPost.isNull("caption")) {
+                                caption = jsonPost.getJSONObject("caption").getString("text");
+                            }
+
+                            JSONObject jsonUser = jsonPost.getJSONObject("user");
+                            String userName = jsonUser.getString("username");
+                            String userPicture = jsonUser.getString("profile_picture");
+                            int likesCount = jsonPost.getJSONObject("likes").getInt("count");
+
+                            InstagramUser instaUser = new InstagramUser(userName, userPicture);
+                            InstagramPost instaPost = new InstagramPost(instaUser, caption, imageUrl, likesCount);
+                            instagramPosts.add(instaPost);
                         }
 
-                        JSONObject jsonUser = jsonPost.getJSONObject("user");
-                        String userName = jsonUser.getString("username");
-                        String userPicture = jsonUser.getString("profile_picture");
-                        int likesCount = jsonPost.getJSONObject("likes").getInt("count");
+                        Log.i("*** PhotoStream.getPhotoStream", "POSTS::" + instagramPosts.size());
+                        InstagramAdapter postArrayAdapter = new InstagramAdapter(context, instagramPosts);
+                        lvPosts.setAdapter(postArrayAdapter);
 
-                        InstagramUser instaUser = new InstagramUser(userName, userPicture);
-                        InstagramPost instaPost = new InstagramPost(instaUser, caption, imageUrl, likesCount);
-                        instagramPosts.add(instaPost);
+                    } catch (Exception e) {
+                        Log.e(">> getPhotoStream", e.getMessage());
                     }
-
-                    //Log.i(">> getPhotoStream", "POSTS::"+instagramPosts.size());
-                    InstagramAdapter postArrayAdapter = new InstagramAdapter(context, instagramPosts);
-                    lvPosts.setAdapter(postArrayAdapter);
-
-                } catch (Exception e) {
-                    Log.e(">> getPhotoStream", e.getMessage());
+                } else {
+                    Toast.makeText(context, "Network Error, try again later! code "+statusCode, Toast.LENGTH_LONG).show();
                 }
             }
-        });
+        };
+
+        //Log.i("*** PhotoStream.getPhotoStream", "Requesting Photos");
+        InstagramAPIClient.get("/media/popular", null, responseHandler);
     }
 
 
